@@ -11,8 +11,10 @@
 /.env*
 !/.env*.example
 
-# Real per-destination Kamal secrets (gitignored; templates are *.example).
-/.kamal/secrets.production
+# Real Kamal secrets (gitignored; .example templates are committed).
+# .kamal/secrets        = production (no -d flag passes production as default)
+# .kamal/secrets.staging = staging (-d staging)
+/.kamal/secrets
 /.kamal/secrets.staging
 
 # Ignore all logfiles and tempfiles.

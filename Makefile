@@ -53,7 +53,7 @@ registry-down:  ## Stop local Docker registry
 registry-logs:  ## Tail local registry logs
 	docker compose -f docker-compose.registry.yml logs -f
 
-deploy-production:  ## Deploy to production via Kamal
+deploy-production:  ## Deploy to production via Kamal (default destination)
 	bin/kamal deploy
 
 deploy-staging:  ## Deploy to staging via Kamal
