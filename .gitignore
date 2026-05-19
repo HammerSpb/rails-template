@@ -37,4 +37,8 @@
 # Local TLS certs (regenerate via bin/generate-local-certs).
 /.kamal/certs/
 
+# Database backups.
+/backups/
+
+
 

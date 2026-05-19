@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Dumps the Postgres accessory database to backups/.
+#
+# Usage:
+#   bin/db-backup              # production
+#   bin/db-backup staging      # staging
+#
+# Produces a gzipped dump:  backups/<env>-<timestamp>.sql.gz
+# Restore with:
+#   gunzip -c backups/<file>.sql.gz | docker exec -i <container> psql -U myapp <db>
+
+set -euo pipefail
+
+ENV_NAME="${1:-production}"
+
+case "$ENV_NAME" in
+  production)
+    CONTAINER="myapp-db"
+    DATABASE="myapp_production"
+    ;;
+  staging)
+    CONTAINER="myapp-staging-db"
+    DATABASE="myapp_staging"
+    ;;
+  *)
+    echo "error: unknown env '$ENV_NAME' (expected: production, staging)" >&2
+    exit 1
+    ;;
+esac
+
+if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
+  echo "error: container '$CONTAINER' is not running. Deploy first with kamal." >&2
+  exit 1
+fi
+
+mkdir -p backups
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+OUTPUT="backups/${ENV_NAME}-${TIMESTAMP}.sql.gz"
+
+echo "Dumping $DATABASE from $CONTAINER -> $OUTPUT"
+docker exec "$CONTAINER" pg_dump -U myapp "$DATABASE" | gzip > "$OUTPUT"
+
+SIZE=$(du -h "$OUTPUT" | cut -f1)
+echo "Done. $OUTPUT ($SIZE)"
