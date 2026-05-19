@@ -1,0 +1,16 @@
+name: rails-template-registry
+
+services:
+  registry:
+    image: registry:2
+    container_name: rails-template-registry
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5555:5000"
+    volumes:
+      - registry_data:/var/lib/registry
+    environment:
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+
+volumes:
+  registry_data:
