@@ -33,3 +33,7 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Local TLS certs (regenerate via bin/generate-local-certs).
+/.kamal/certs/
+
+

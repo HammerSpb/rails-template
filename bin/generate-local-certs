@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Generates locally-trusted TLS certs for myapp.local and myapp-staging.local
+# using mkcert. The certs land in .kamal/certs/ and are gitignored.
+#
+# Prerequisites:
+#   brew install mkcert nss
+#   mkcert -install   # installs local CA into system trust store (one-time)
+#
+# After generating, see README.md "Local HTTPS" for how to wire them into
+# kamal-proxy.
+
+set -euo pipefail
+
+if ! command -v mkcert >/dev/null 2>&1; then
+  echo "error: mkcert not found. Install with: brew install mkcert nss" >&2
+  exit 1
+fi
+
+CERT_DIR=".kamal/certs"
+mkdir -p "$CERT_DIR"
+
+for host in myapp.local myapp-staging.local; do
+  mkcert \
+    -cert-file "$CERT_DIR/$host.pem" \
+    -key-file "$CERT_DIR/$host-key.pem" \
+    "$host"
+  echo "  -> $CERT_DIR/$host.pem"
+done
+
+cat <<'NOTE'
+
+Done. Next steps:
+
+1. Add hostnames to /etc/hosts (sudo required):
+     127.0.0.1  myapp.local myapp-staging.local
+
+2. Enable SSL in config/deploy.yml and config/deploy.staging.yml by setting:
+     proxy:
+       ssl: true
+       ssl_certificate_path: /etc/ssl/certs/myapp.pem
+       ssl_certificate_key_path: /etc/ssl/private/myapp-key.pem
+
+3. After `kamal proxy boot`, copy certs into the running kamal-proxy container:
+     docker cp .kamal/certs/myapp.local.pem      kamal-proxy:/etc/ssl/certs/myapp.pem
+     docker cp .kamal/certs/myapp.local-key.pem  kamal-proxy:/etc/ssl/private/myapp-key.pem
+     docker exec kamal-proxy kamal-proxy reload
+
+   (Repeat for myapp-staging.local with the staging paths.)
+
+For a real production deploy, prefer kamal-proxy's built-in Let's Encrypt
+(set `ssl: true` with a real `host:` value and remove the cert paths).
+NOTE
