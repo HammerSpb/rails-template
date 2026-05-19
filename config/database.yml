@@ -89,7 +89,9 @@ production:
     <<: *default
     database: myapp_production
     username: myapp
-    password: <%= ENV["MYAPP_DATABASE_PASSWORD"] %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+    host: <%= ENV.fetch("DB_HOST", "localhost") %>
+    port: <%= ENV.fetch("DB_PORT", 5432) %>
   cache:
     <<: *primary_production
     database: myapp_production_cache
@@ -101,4 +103,25 @@ production:
   cable:
     <<: *primary_production
     database: myapp_production_cable
+    migrations_paths: db/cable_migrate
+
+staging:
+  primary: &primary_staging
+    <<: *default
+    database: myapp_staging
+    username: myapp
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+    host: <%= ENV.fetch("DB_HOST", "localhost") %>
+    port: <%= ENV.fetch("DB_PORT", 5432) %>
+  cache:
+    <<: *primary_staging
+    database: myapp_staging_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_staging
+    database: myapp_staging_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_staging
+    database: myapp_staging_cable
     migrations_paths: db/cable_migrate
