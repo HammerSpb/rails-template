@@ -4,6 +4,7 @@
         console-production console-staging \
         ssh-production ssh-staging \
         db-backup-production db-backup-staging \
+        lint lint-fix \
         local-certs \
         clean
 
@@ -52,6 +53,14 @@ db-backup-production:  ## pg_dump production -> backups/
 
 db-backup-staging:  ## pg_dump staging -> backups/
 	bin/db-backup staging
+
+lint:  ## Run RuboCop + ERB Lint
+	bin/rubocop
+	bundle exec erb_lint --lint-all
+
+lint-fix:  ## Run RuboCop + ERB Lint with autocorrect
+	bin/rubocop -a
+	bundle exec erb_lint --lint-all --autocorrect
 
 local-certs:  ## Generate mkcert TLS certs for *.local hosts
 	bin/generate-local-certs
