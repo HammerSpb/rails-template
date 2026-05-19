@@ -1,4 +1,4 @@
-.PHONY: help setup dev-up dev-down dev-logs dev-psql \
+.PHONY: help setup dev dev-up dev-down dev-logs dev-psql \
         registry-up registry-down registry-logs \
         deploy-production deploy-staging \
         logs-production logs-staging \
@@ -15,6 +15,9 @@ help:  ## Show available targets
 
 setup:  ## Bootstrap: install deps, start dev DB + registry, prepare DB
 	bin/setup
+
+dev:  ## Start Rails dev server (Puma + foreman via bin/dev)
+	bin/dev
 
 dev-up:  ## Start dev Postgres (localhost:5434)
 	docker compose -f docker-compose.dev.yml up -d

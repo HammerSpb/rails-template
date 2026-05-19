@@ -53,9 +53,11 @@ FileUtils.chdir APP_ROOT do
     end
   end
 
-  unless ARGV.include?("--skip-server")
+  if ARGV.include?("--server")
     puts "\n== Starting development server =="
     STDOUT.flush
     exec "bin/dev"
+  else
+    puts "\nReady. Start the dev server with: bin/dev"
   end
 end
