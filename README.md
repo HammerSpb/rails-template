@@ -124,18 +124,70 @@ daemon (shared via socket) needs the path to resolve. The container's
 `roman` user matches macOS uid 502 / gid 20 so created files keep proper
 ownership.
 
-## Common operations
+## Daily workflow
+
+### Local development
+
+Rails runs natively on your Mac and talks to a Dockerized dev Postgres.
+No Kamal involved.
 
 ```bash
-make deploy-production           # release deploy
-make deploy-staging              # staging deploy
-make logs-production             # tail prod logs
-make console-staging             # rails console against staging
-make db-backup-production        # gzipped pg_dump -> backups/
-make registry-up / registry-down
-make dev-up / dev-down / dev-psql
-make kamal-host-up / kamal-host-down / kamal-host-shell
-make lint / lint-fix             # RuboCop + ERB Lint
+make setup           # idempotent: bundle, start dev DB + registry + kamal-host, prepare DB
+make dev             # boot Rails on http://127.0.0.1:3000
+make dev-down        # stop dev Postgres (data persists in volume)
+make dev-psql        # psql into dev DB
+bin/rails test       # tests run against the dev Postgres test database
+make lint            # RuboCop + ERB Lint
+make lint-fix        # auto-fix
+```
+
+### Staging
+
+```bash
+bin/kamal accessory boot db -d staging   # first-time only: bring up Postgres
+make deploy-staging                       # build, push, swap-in new container
+make logs-staging                         # tail
+make console-staging                      # rails c
+make ssh-staging                          # bash inside the app container
+make db-backup-staging                    # gzipped pg_dump -> backups/
+
+bin/kamal app stop    -d staging          # stop the app (keep image + DB)
+bin/kamal app start   -d staging          # start it again
+bin/kamal app boot    -d staging          # restart
+bin/kamal remove      -d staging          # tear down everything: app + accessory + volumes
+```
+
+Visit: **http://myapp-staging.local**
+
+### Production
+
+Same as staging, but production is Kamal's **default destination** — no
+`-d` flag.
+
+```bash
+bin/kamal accessory boot db               # first-time only
+make deploy-production
+make logs-production
+make console-production
+make ssh-production
+make db-backup-production
+
+bin/kamal app stop                        # stop
+bin/kamal app start                       # start
+bin/kamal app boot                        # restart
+bin/kamal remove                          # tear down
+```
+
+Visit: **http://myapp.local**
+
+### Other handy targets
+
+```bash
+make registry-up / registry-down          # local image registry
+make kamal-host-up / kamal-host-down      # the Linux SSH target
+make kamal-host-shell                     # shell into kamal-host as roman
+make local-certs                          # mkcert HTTPS certs
+make help                                 # list everything
 ```
 
 ## Secrets
@@ -171,22 +223,49 @@ make local-certs        # generates certs in .kamal/certs/
 Then follow the on-screen instructions to enable `ssl: true` in the deploy
 config and copy certs into the running kamal-proxy container.
 
-## Deploying to a real remote server
+## Moving to real remote servers
 
-Three changes turn this from local-Kamal into real-host Kamal:
+The whole point of the local-Kamal setup is that the same configuration
+runs unmodified against real VPSes. This section walks through what
+changes when you flip from local → remote, broken down by the four
+pieces of infrastructure: **app server**, **registry**, **database**,
+**SSL/DNS**.
 
-1. **Hosts**: `servers.web` and accessory `host` → your server's IP
-2. **SSH**: `ssh.user` → your remote user; `ssh.port` → 22 (drop the `:2222`)
-3. **SSL**: `proxy.ssl: true` + `proxy.host: your-domain.com`
-   (remove `ssl_certificate_path` / `ssl_certificate_key_path` — the
-   proxy will provision via Let's Encrypt automatically)
+### 1. Real app/web server (production or staging)
 
-You'd also stop the `kamal-host` container and tear down the local registry,
-and switch `registry.server` to `ghcr.io` (or whatever).
+Provision a Linux box (any cloud — Hetzner, DigitalOcean, Fly.io machines,
+a friend's bare metal). Requirements: Ubuntu/Debian, ssh access, port 22
+reachable, ports 80 + 443 open. Kamal installs docker for you on first
+deploy.
 
-## Migrating from local registry to ghcr.io
+In `config/deploy.yml` (production) / `config/deploy.staging.yml`:
 
-In **both** `config/deploy.yml` and `config/deploy.staging.yml`:
+```yaml
+servers:
+  web:
+    - 203.0.113.10           # <-- your real server IP (or hostname)
+
+ssh:
+  user: deploy               # <-- the user Kamal SSHes as on the remote
+  port: 22                   # <-- drop :2222
+```
+
+Add the SSH key you want Kamal to use to that user's `~/.ssh/authorized_keys`
+on the remote, then verify: `ssh deploy@203.0.113.10 'echo ok'`.
+
+Once a real server is in play, **the `kamal-host` container is no longer
+needed**. Stop it: `make kamal-host-down`. Remove `kamal-host/` and
+`docker-compose.kamal-host.yml` from the repo when you're confident
+you've moved.
+
+### 2. Real registry (GitHub Container Registry)
+
+The local registry (`127.0.0.1:5555`) only made sense because the build
+host and deploy host were the same machine. A real remote server can't
+reach `127.0.0.1` on your laptop. Use a real registry; ghcr.io is the
+zero-friction choice if your code is on GitHub.
+
+In both `config/deploy.yml` and `config/deploy.staging.yml`:
 
 ```yaml
 registry:
@@ -194,13 +273,156 @@ registry:
   username: your-github-username
   password:
     - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  # remove `driver: docker` — Kamal's default docker-container builder
+  # works fine when pushing to a real registry (it was only a problem
+  # for the local 127.0.0.1 registry because of network namespaces)
 ```
 
-Set `KAMAL_REGISTRY_PASSWORD` in `.kamal/secrets.production` /
-`.kamal/secrets.staging` to a GitHub PAT with `write:packages` scope.
+Create a GitHub PAT with `write:packages` (classic token) or use a
+fine-grained token scoped to the repo. Put it in
+`.kamal/secrets` and `.kamal/secrets.staging`:
 
-Image names rebase from `127.0.0.1:5555/myapp` to `ghcr.io/your-user/myapp`
-automatically.
+```
+KAMAL_REGISTRY_PASSWORD=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+Image names automatically rebase from `127.0.0.1:5555/myapp` to
+`ghcr.io/your-github-username/myapp`. Then tear down the local registry:
+
+```bash
+make registry-down
+docker volume rm rails-template-registry_registry_data   # optional, drops cached images
+```
+
+Remove `docker-compose.registry.yml` and the `registry-*` targets in the
+Makefile once you're sure.
+
+Also revert the `~/.docker/config.json` workaround we added for local
+deploys (delete the `credHelpers."127.0.0.1:5555"` block) — it's no
+longer needed.
+
+### 3. Real database server
+
+You have two paths.
+
+**Option A: Postgres on the same host as the app (simplest).**
+Keep the existing `accessories.db` block. Kamal will boot the Postgres
+container next to your app container on the remote server.
+
+```yaml
+accessories:
+  db:
+    image: postgres:16-alpine
+    host: 203.0.113.10        # <-- same server IP as servers.web
+    port: "127.0.0.1:5432:5432"   # bind to loopback only; not exposed publicly
+    env:
+      clear:
+        POSTGRES_USER: myapp
+        POSTGRES_DB: myapp_production
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data
+```
+
+Boot it once: `bin/kamal accessory boot db`. The data volume persists
+across `kamal deploy` runs.
+
+**Option B: Dedicated DB server (or managed Postgres).**
+Spin up Postgres on a separate VPS, RDS, Crunchy, Supabase, etc. Then:
+
+```yaml
+# Drop the accessories.db block entirely.
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - POSTGRES_PASSWORD
+  clear:
+    DB_HOST: db.internal.example.com   # <-- managed DB hostname or private IP
+    DB_PORT: 5432
+    RAILS_ENV: production
+```
+
+If your managed Postgres uses a different username/database name, update
+`config/database.yml` accordingly. For SSL-required connections (RDS,
+Supabase), set `sslmode: require` in the database config:
+
+```yaml
+production:
+  primary:
+    <<: *default
+    ...
+    sslmode: require
+```
+
+`bin/db-backup` needs adjusting if the DB no longer runs as a Kamal
+accessory on the same host — point it at the managed instance via
+`pg_dump postgresql://user:pass@db.internal.example.com/myapp_production`.
+
+### 4. SSL/DNS
+
+For real domains, kamal-proxy's built-in Let's Encrypt does everything.
+In your deploy config:
+
+```yaml
+proxy:
+  ssl: true
+  host: app.example.com         # <-- your real domain
+  app_port: 3000
+  healthcheck:
+    path: /up
+    interval: 3
+    timeout: 3
+  # Delete ssl_certificate_path and ssl_certificate_key_path — those are
+  # only used for the local mkcert flow.
+```
+
+Requirements for LE to succeed:
+- DNS A/AAAA record points at the server's public IP
+- Port 80 reachable from the internet (LE uses HTTP-01 by default)
+- Port 443 reachable
+
+For staging, you'll want a separate hostname (`staging.example.com`) on
+the same server, same kamal-proxy. Kamal handles SNI-style routing
+between them automatically.
+
+Now you can also remove `bin/generate-local-certs` and the
+`local-certs` Makefile target if you don't deploy locally any more.
+
+### 5. Required changes summary
+
+| What | Local | Real remote |
+|---|---|---|
+| `servers.web` | `127.0.0.1` | server's public IP / hostname |
+| `ssh.port` | `2222` | `22` |
+| `ssh.user` | `roman` | the remote user (often `root` or `deploy`) |
+| `registry.server` | `127.0.0.1:5555` | `ghcr.io` (or another remote registry) |
+| `registry.username` | `kamal` (stub) | your GitHub username |
+| `builder.driver` | `docker` | omit (use Kamal's default) |
+| `proxy.ssl` | `false` | `true` |
+| `proxy.host` | `myapp.local` | `app.example.com` |
+| `proxy.ssl_certificate_*` | configured for mkcert | omit |
+| `accessories.db.host` | `127.0.0.1` | server IP, or remove for managed DB |
+| `kamal-host` container | needed | **delete entirely** |
+| Local registry container | needed | **delete entirely** |
+| `~/.zshenv` PATH hack | needed | not needed |
+| `~/.docker/config.json` credHelpers override | needed | not needed |
+| `/etc/hosts` entries | needed | not needed (real DNS) |
+| `~/.ssh/authorized_keys` self-entry | needed | not needed |
+
+### 6. Suggested rollout order
+
+1. Get a real registry first (ghcr.io). Verify `make deploy-staging`
+   builds and pushes there. Locally everything still works.
+2. Provision the staging server. Switch `config/deploy.staging.yml`
+   `servers.web` and `ssh.*` to point at it. Deploy. Verify.
+3. Repeat for production.
+4. Remove `kamal-host/`, `docker-compose.kamal-host.yml`,
+   `docker-compose.registry.yml`, and the corresponding Makefile
+   targets. Trim the host-side workarounds from this README.
 
 ## File map
 
