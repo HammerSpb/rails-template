@@ -58,16 +58,18 @@ These changes are outside the project but required for the local Kamal flow:
    127.0.0.1   myapp.local  myapp-staging.local
    ```
 
-4. **SSH key auth to the kamal-host container** — your `~/.ssh/id_ed25519.pub`
-   is bind-mounted into the container as `authorized_keys` automatically.
-   If you only have `id_rsa`, edit `docker-compose.kamal-host.yml`.
+4. **SSH key auth to the kamal-host container** — `docker-compose.kamal-host.yml`
+   bind-mounts your `~/.ssh/id_ed25519.pub` into the container at
+   `/etc/ssh/authorized_keys.d/roman`. If you only have `id_rsa`, edit
+   the compose file to point at the right pub key. (Nothing needs to be
+   added to your local `~/.ssh/authorized_keys`.)
 
 ## Quickstart
 
 ```bash
-make setup                  # bundle, db:prepare, start dev DB + registry + kamal-host
-cp .kamal/secrets.staging.example  .kamal/secrets.staging      # then edit
-cp .kamal/secrets.production.example  .kamal/secrets.production # then edit
+make setup                                  # bundle, db:prepare, start dev DB + registry + kamal-host
+cp .kamal/secrets.example          .kamal/secrets          # then edit (production)
+cp .kamal/secrets.staging.example  .kamal/secrets.staging  # then edit (staging)
 
 bin/kamal accessory boot db                # first-time only: bring up prod DB
 bin/kamal accessory boot db -d staging     # first-time only: bring up staging DB
@@ -192,20 +194,23 @@ make help                                 # list everything
 
 ## Secrets
 
-Kamal 2 reads secrets via **dotenv parsing** of these files (in order):
+Kamal 2 reads secrets via **dotenv parsing** of these files:
 
 ```
-.kamal/secrets-common              # committed; common to all envs
-.kamal/secrets.production          # gitignored; prod-only
-.kamal/secrets.staging             # gitignored; staging-only (loaded by -d staging)
+.kamal/secrets-common              # committed; common to all destinations
+.kamal/secrets                     # gitignored; production (default destination, no -d flag)
+.kamal/secrets.staging             # gitignored; staging (loaded by -d staging)
 ```
 
-Templates ending in `.example` are committed. `make setup` doesn't copy
-them — do it once by hand:
+Production maps to the no-suffix file because Kamal treats the
+"no -d flag" case as a destination whose secrets file is `.kamal/secrets`.
+
+Templates ending in `.example` are committed. `bin/setup` copies them
+for you on first run; or do it by hand:
 
 ```bash
-cp .kamal/secrets.production.example .kamal/secrets.production
-cp .kamal/secrets.staging.example .kamal/secrets.staging
+cp .kamal/secrets.example          .kamal/secrets
+cp .kamal/secrets.staging.example  .kamal/secrets.staging
 # then edit and put real POSTGRES_PASSWORD etc.
 ```
 
@@ -282,8 +287,8 @@ builder:
 ```
 
 Create a GitHub PAT with `write:packages` (classic token) or use a
-fine-grained token scoped to the repo. Put it in
-`.kamal/secrets` and `.kamal/secrets.staging`:
+fine-grained token scoped to the repo. Set it in both `.kamal/secrets`
+(production) and `.kamal/secrets.staging`:
 
 ```
 KAMAL_REGISTRY_PASSWORD=ghp_xxxxxxxxxxxxxxxxxxxx
@@ -411,7 +416,6 @@ Now you can also remove `bin/generate-local-certs` and the
 | `~/.zshenv` PATH hack | needed | not needed |
 | `~/.docker/config.json` credHelpers override | needed | not needed |
 | `/etc/hosts` entries | needed | not needed (real DNS) |
-| `~/.ssh/authorized_keys` self-entry | needed | not needed |
 
 ### 6. Suggested rollout order
 
@@ -428,8 +432,10 @@ Now you can also remove `bin/generate-local-certs` and the
 
 ```
 .kamal/secrets-common              — common Kamal secrets (committed)
-.kamal/secrets.{production,staging}.example — templates (committed)
-.kamal/secrets.{production,staging}— real values (gitignored)
+.kamal/secrets.example             — production secrets template (committed)
+.kamal/secrets.staging.example     — staging secrets template (committed)
+.kamal/secrets                     — real production secrets (gitignored)
+.kamal/secrets.staging             — real staging secrets (gitignored)
 config/deploy.yml                  — Kamal production config
 config/deploy.staging.yml          — Kamal staging config
 docker-compose.dev.yml             — dev Postgres (localhost:5434)
@@ -449,8 +455,8 @@ Makefile                           — deploy/logs/backup aliases
 
 - The `myapp` name is a placeholder. To rename, grep-and-replace `myapp` /
   `MyApp` across `config/`, `Makefile`, `bin/`, and accessory hostnames.
-- `.kamal/secrets.{production,staging}` are gitignored. The `.example`
-  files are committed.
+- `.kamal/secrets` and `.kamal/secrets.staging` are gitignored. The
+  `.example` templates are committed.
 - Solid Queue runs inside Puma by default (`SOLID_QUEUE_IN_PUMA: true`).
   Split onto a `job:` host once load justifies it.
 - Accessories (Postgres) aren't auto-booted on `kamal deploy` — run

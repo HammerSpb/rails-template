@@ -43,18 +43,12 @@ FileUtils.chdir APP_ROOT do
 
   puts "\n== Bootstrapping deploy artifacts =="
 
-  unless File.exist?(".env.production")
-    if File.exist?(".env.production.example")
-      FileUtils.cp ".env.production.example", ".env.production"
-      puts "  created .env.production (from example) - edit it before deploying"
-    end
-  end
-
-  unless File.exist?(".env.staging")
-    if File.exist?(".env.staging.example")
-      FileUtils.cp ".env.staging.example", ".env.staging"
-      puts "  created .env.staging (from example) - edit it before deploying"
-    end
+  { ".kamal/secrets.example"         => ".kamal/secrets",
+    ".kamal/secrets.staging.example" => ".kamal/secrets.staging" }.each do |src, dst|
+    next if File.exist?(dst)
+    next unless File.exist?(src)
+    FileUtils.cp src, dst
+    puts "  created #{dst} (from example) - edit it before deploying"
   end
 
   if ARGV.include?("--server")
