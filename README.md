@@ -9,6 +9,7 @@ workflow moves untouched to a remote host later.
 
 - **Rails 8** with **Solid Queue / Solid Cache / Solid Cable** (Postgres-backed; no Redis)
 - **PostgreSQL 16** as a Kamal accessory — one container per environment
+- **Dockerized dev DB** at `localhost:5434` (no local Postgres install needed)
 - **Local Docker registry** at `localhost:5555` (no external registry needed)
 - **Two Kamal configs**: `config/deploy.yml` (prod) and `config/deploy.staging.yml`
 - **JSON structured logging** in production and staging
@@ -62,7 +63,8 @@ curl http://myapp-staging.local/up
 ```
 ┌────────────────────────────── your laptop ──────────────────────────────┐
 │                                                                         │
-│  localhost:5555  ──────►  registry:2 (Docker registry)                  │
+│  localhost:5434  ──────►  postgres:16 (development + test DB)           │
+│  localhost:5555  ──────►  registry:2  (Docker image registry)           │
 │                                                                         │
 │  myapp.local           ─┐                                               │
 │  myapp-staging.local   ─┴─►  kamal-proxy (host port 80, hostname-routed)│
@@ -90,6 +92,8 @@ make logs-production             # tail prod logs
 make console-staging             # rails console against staging
 make db-backup-production        # gzipped pg_dump -> backups/
 make registry-up / registry-down # control local registry
+make dev-up / dev-down           # control dev Postgres
+make dev-psql                    # psql into dev DB
 ```
 
 ## Local HTTPS
@@ -148,7 +152,8 @@ automatically based on the registry config.
 .env.staging.example       — template for staging secrets
 config/deploy.yml          — Kamal production config
 config/deploy.staging.yml  — Kamal staging config
-docker-compose.registry.yml— local Docker registry
+docker-compose.dev.yml     — dev Postgres (localhost:5434)
+docker-compose.registry.yml— local Docker registry (localhost:5555)
 Dockerfile                 — multi-stage production image (Rails 8 default)
 bin/setup                  — bootstrap script
 bin/db-backup              — pg_dump from a running Kamal accessory
