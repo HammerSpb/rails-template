@@ -33,9 +33,13 @@ Rails.application.configure do
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
-  # Log to STDOUT with the current request id as a default log tag.
+  # JSON-formatted logs to STDOUT, tagged with request id. Easier to parse
+  # for Docker/Kamal log aggregation.
+  require Rails.root.join("lib/json_log_formatter")
   config.log_tags = [ :request_id ]
-  config.logger   = ActiveSupport::TaggedLogging.logger(STDOUT)
+  logger = ActiveSupport::Logger.new(STDOUT)
+  logger.formatter = JsonLogFormatter.new
+  config.logger = ActiveSupport::TaggedLogging.new(logger)
 
   # Change to "debug" to log everything (including potentially personally-identifiable information!).
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
