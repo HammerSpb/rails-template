@@ -1,24 +1,19 @@
-# Production deploy config.
-# Run with: bin/kamal deploy
+# Staging deploy config.
+# Run with: bin/kamal deploy -d staging
 
-service: myapp
+service: myapp-staging
 image: myapp
 
 servers:
   web:
     - 127.0.0.1
 
-# Self-signed certs via mkcert are mounted into kamal-proxy below.
-# When migrating to a real host, switch to Let's Encrypt by setting `ssl: true`
-# and `host: your-domain.com` (and remove the custom cert paths).
 proxy:
   ssl: false
   app_port: 3000
-  host: myapp.local
-  # When deploying to a real domain, set ssl: true and host: your-domain.com
-  # for automatic Let's Encrypt. For local HTTPS, see bin/generate-local-certs.
-  # ssl_certificate_path: /etc/ssl/certs/myapp.pem
-  # ssl_certificate_key_path: /etc/ssl/private/myapp-key.pem
+  host: myapp-staging.local
+  # ssl_certificate_path: /etc/ssl/certs/myapp-staging.pem
+  # ssl_certificate_key_path: /etc/ssl/private/myapp-staging-key.pem
   healthcheck:
     path: /up
     interval: 3
@@ -35,8 +30,8 @@ env:
     - POSTGRES_PASSWORD
   clear:
     SOLID_QUEUE_IN_PUMA: true
-    DB_HOST: myapp-db
-    RAILS_ENV: production
+    DB_HOST: myapp-staging-db
+    RAILS_ENV: staging
     RAILS_LOG_TO_STDOUT: "1"
 
 ssh:
@@ -50,7 +45,7 @@ aliases:
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
 volumes:
-  - "myapp_storage:/rails/storage"
+  - "myapp_staging_storage:/rails/storage"
 
 asset_path: /rails/public/assets
 
@@ -61,11 +56,11 @@ accessories:
   db:
     image: postgres:16-alpine
     host: 127.0.0.1
-    port: "127.0.0.1:5432:5432"
+    port: "127.0.0.1:5433:5432"
     env:
       clear:
         POSTGRES_USER: myapp
-        POSTGRES_DB: myapp_production
+        POSTGRES_DB: myapp_staging
       secret:
         - POSTGRES_PASSWORD
     directories:
