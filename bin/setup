@@ -11,6 +11,25 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system("bundle check") || system!("bundle install")
 
+  puts "\n== Booting dev services (Postgres + registry) =="
+  if system("docker info > /dev/null 2>&1")
+    system! "docker compose -f docker-compose.dev.yml up -d"
+
+    unless system("docker ps --format '{{.Names}}' | grep -q '^rails-template-registry$'")
+      system! "docker compose -f docker-compose.registry.yml up -d"
+    end
+
+    print "  waiting for Postgres"
+    30.times do
+      break if system("docker exec rails-template-dev-db pg_isready -U postgres > /dev/null 2>&1")
+      print "."
+      sleep 1
+    end
+    puts " ready"
+  else
+    abort "Docker is not running. Start Docker Desktop and re-run bin/setup."
+  end
+
   puts "\n== Preparing database =="
   system! "bin/rails db:prepare"
   system! "bin/rails db:reset" if ARGV.include?("--reset")
@@ -32,16 +51,6 @@ FileUtils.chdir APP_ROOT do
       FileUtils.cp ".env.staging.example", ".env.staging"
       puts "  created .env.staging (from example) - edit it before deploying"
     end
-  end
-
-  if system("docker info > /dev/null 2>&1")
-    registry_running = system("docker ps --format '{{.Names}}' | grep -q '^rails-template-registry$'")
-    unless registry_running
-      puts "  starting local Docker registry on localhost:5555"
-      system! "docker compose -f docker-compose.registry.yml up -d"
-    end
-  else
-    puts "  Docker not running - skipping registry bootstrap"
   end
 
   unless ARGV.include?("--skip-server")

@@ -1,4 +1,5 @@
-.PHONY: help setup registry-up registry-down registry-logs \
+.PHONY: help setup dev-up dev-down dev-logs dev-psql \
+        registry-up registry-down registry-logs \
         deploy-production deploy-staging \
         logs-production logs-staging \
         console-production console-staging \
@@ -12,8 +13,20 @@ help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 	  awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-26s\033[0m %s\n", $$1, $$2}'
 
-setup:  ## Bootstrap: install deps, prepare DB, start local registry
+setup:  ## Bootstrap: install deps, start dev DB + registry, prepare DB
 	bin/setup
+
+dev-up:  ## Start dev Postgres (localhost:5434)
+	docker compose -f docker-compose.dev.yml up -d
+
+dev-down:  ## Stop dev Postgres
+	docker compose -f docker-compose.dev.yml down
+
+dev-logs:  ## Tail dev Postgres logs
+	docker compose -f docker-compose.dev.yml logs -f
+
+dev-psql:  ## psql into dev Postgres
+	docker exec -it rails-template-dev-db psql -U postgres -d myapp_development
 
 registry-up:  ## Start local Docker registry (localhost:5555)
 	docker compose -f docker-compose.registry.yml up -d
