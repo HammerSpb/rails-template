@@ -1,4 +1,5 @@
 .PHONY: help setup dev dev-up dev-down dev-logs dev-psql \
+        kamal-host-up kamal-host-down kamal-host-logs kamal-host-shell \
         registry-up registry-down registry-logs \
         deploy-production deploy-staging \
         logs-production logs-staging \
@@ -30,6 +31,18 @@ dev-logs:  ## Tail dev Postgres logs
 
 dev-psql:  ## psql into dev Postgres
 	docker exec -it rails-template-dev-db psql -U postgres -d myapp_development
+
+kamal-host-up:  ## Start the Linux Kamal deploy target (sshd on 127.0.0.1:2222)
+	docker compose -f docker-compose.kamal-host.yml up -d --build
+
+kamal-host-down:  ## Stop the Kamal deploy target
+	docker compose -f docker-compose.kamal-host.yml down
+
+kamal-host-logs:  ## Tail Kamal host logs
+	docker compose -f docker-compose.kamal-host.yml logs -f
+
+kamal-host-shell:  ## Shell into the Kamal host (as roman)
+	docker exec -it -u roman rails-template-kamal-host bash
 
 registry-up:  ## Start local Docker registry (localhost:5555)
 	docker compose -f docker-compose.registry.yml up -d

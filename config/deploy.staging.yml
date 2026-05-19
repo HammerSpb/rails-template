@@ -37,7 +37,7 @@ env:
 
 ssh:
   user: roman
-  port: 22
+  port: 2222
 
 aliases:
   console: app exec --interactive --reuse "bin/rails console"

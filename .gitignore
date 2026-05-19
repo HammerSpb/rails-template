@@ -11,6 +11,10 @@
 /.env*
 !/.env*.example
 
+# Real per-destination Kamal secrets (gitignored; templates are *.example).
+/.kamal/secrets.production
+/.kamal/secrets.staging
+
 # Ignore all logfiles and tempfiles.
 /log/*
 /tmp/*
@@ -39,6 +43,20 @@
 
 # Database backups.
 /backups/
+
+# Kamal runtime state (assets cache, proxy config, accessory data dirs).
+# Written by Kamal into the kamal-host container's $HOME (bind-mounted
+# here for path-alignment); not source.
+/.kamal/apps/
+/.kamal/proxy/
+/.kamal/*-audit.log
+/myapp-staging-db/
+/myapp-db/
+
+# Stray dotfiles the kamal-host container creates inside its $HOME.
+/.cache/
+/.docker/
+/.ssh/
 
 
 

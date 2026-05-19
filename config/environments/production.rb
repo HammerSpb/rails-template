@@ -47,6 +47,12 @@ Rails.application.configure do
   # Prevent health checks from clogging up the logs.
   config.silence_healthcheck_path = "/up"
 
+  # Kamal-proxy reaches the healthcheck via the container hostname; let
+  # /up bypass the host filter so deploys go green.
+  config.host_authorization = {
+    exclude: ->(request) { request.path == "/up" }
+  }
+
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 

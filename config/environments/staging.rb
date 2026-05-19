@@ -34,4 +34,10 @@ Rails.application.configure do
 
   config.hosts << "myapp-staging.local"
   config.hosts << /.+\.myapp-staging\.local/
+
+  # Kamal-proxy reaches the healthcheck via the container hostname; let
+  # /up bypass the host filter so deploys go green.
+  config.host_authorization = {
+    exclude: ->(request) { request.path == "/up" }
+  }
 end

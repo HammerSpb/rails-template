@@ -11,12 +11,16 @@ FileUtils.chdir APP_ROOT do
   puts "== Installing dependencies =="
   system("bundle check") || system!("bundle install")
 
-  puts "\n== Booting dev services (Postgres + registry) =="
+  puts "\n== Booting dev services (Postgres + registry + kamal-host) =="
   if system("docker info > /dev/null 2>&1")
     system! "docker compose -f docker-compose.dev.yml up -d"
 
     unless system("docker ps --format '{{.Names}}' | grep -q '^rails-template-registry$'")
       system! "docker compose -f docker-compose.registry.yml up -d"
+    end
+
+    unless system("docker ps --format '{{.Names}}' | grep -q '^rails-template-kamal-host$'")
+      system! "docker compose -f docker-compose.kamal-host.yml up -d --build"
     end
 
     print "  waiting for Postgres"
