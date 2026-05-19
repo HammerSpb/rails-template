@@ -51,6 +51,9 @@ asset_path: /rails/public/assets
 
 builder:
   arch: amd64
+  args:
+    GIT_SHA: <%= %x(git rev-parse --short HEAD).strip %>
+    APP_VERSION: <%= %x(git describe --tags --always 2>/dev/null || echo dev).strip %>
 
 accessories:
   db:
