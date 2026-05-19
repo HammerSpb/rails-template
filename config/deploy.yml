@@ -24,10 +24,16 @@ proxy:
     interval: 3
     timeout: 3
 
+# Use 127.0.0.1 (not localhost) so Kamal treats this as a normal remote
+# registry and skips its built-in local-registry auto-management + SSH
+# reverse tunnel — both of which collide with a real local registry when
+# the deploy target is also localhost. Docker still treats 127.0.0.1
+# as insecure-by-default, so plain HTTP works.
 registry:
-  server: localhost:5555
-  username: ""
-  password: ""
+  server: 127.0.0.1:5555
+  username: kamal
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 env:
   secret:
@@ -56,6 +62,10 @@ asset_path: /rails/public/assets
 
 builder:
   arch: amd64
+  # Use the host's docker daemon (driver: docker) instead of a separate
+  # docker-container buildx builder. The container builder has its own
+  # network namespace and can't reach a registry at 127.0.0.1 on the host.
+  driver: docker
   args:
     GIT_SHA: <%= %x(git rev-parse --short HEAD).strip %>
     APP_VERSION: <%= %x(git describe --tags --always 2>/dev/null || echo dev).strip %>

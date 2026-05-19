@@ -20,9 +20,10 @@ proxy:
     timeout: 3
 
 registry:
-  server: localhost:5555
-  username: ""
-  password: ""
+  server: 127.0.0.1:5555
+  username: kamal
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 env:
   secret:
@@ -51,6 +52,7 @@ asset_path: /rails/public/assets
 
 builder:
   arch: amd64
+  driver: docker
   args:
     GIT_SHA: <%= %x(git rev-parse --short HEAD).strip %>
     APP_VERSION: <%= %x(git describe --tags --always 2>/dev/null || echo dev).strip %>
