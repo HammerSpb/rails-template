@@ -1,6 +1,14 @@
 ---
 EnableDefaultLinters: true
 
+# --lint-all walks the whole tree; without this it lints ERB templates
+# inside vendored gems (vendor/bundle) and reports their errors as ours.
+exclude:
+  - 'vendor/**/*'
+  - 'bin/**/*'
+  - 'node_modules/**/*'
+  - 'tmp/**/*'
+
 linters:
   AllowedScriptType:
     enabled: true
