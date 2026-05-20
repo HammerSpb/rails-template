@@ -454,8 +454,27 @@ Makefile                           — deploy/logs/backup aliases
 
 ## Notes
 
-- The `myapp` name is a placeholder. To rename, grep-and-replace `myapp` /
-  `MyApp` across `config/`, `Makefile`, `bin/`, and accessory hostnames.
+- The `myapp` name is a placeholder for your service. It drives the service
+  name, image name, database names, accessory hostnames, and volume names.
+  To rename, grep-and-replace it across every tracked file that mentions it
+  (skip this README so the example below stays intact):
+
+  ```bash
+  # macOS / BSD sed
+  git grep -l myapp -- ':!README.md' | xargs sed -i '' 's/myapp/your-app/g'
+
+  # Linux / GNU sed — drop the empty '' after -i:
+  # git grep -l myapp -- ':!README.md' | xargs sed -i 's/myapp/your-app/g'
+  ```
+
+  This touches `config/` (deploy + database), `bin/`, `Dockerfile`,
+  `.gitignore`, and `lib/json_log_formatter.rb`. Plain substring replace
+  also handles `myapp_development`, `myapp-db`, etc. Afterward, recreate
+  the dev DB so the new name takes effect:
+
+  ```bash
+  make dev-down && make dev-up && bin/rails db:prepare
+  ```
 - `.kamal/secrets` and `.kamal/secrets.staging` are gitignored. The
   `.example` templates are committed.
 - Solid Queue runs inside Puma by default (`SOLID_QUEUE_IN_PUMA: true`).
