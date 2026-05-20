@@ -4,10 +4,13 @@
 # so containers Kamal spawns actually run on the host.
 FROM ubuntu:24.04
 
-ARG USER_NAME=roman
-ARG USER_UID=502
-ARG USER_GID=20
-ARG USER_HOME=/Users/roman/work/rails-template
+# Defaults are placeholders; docker-compose.kamal-host.yml overrides all four
+# with values derived from the host ($USER, id -u, id -g, $PWD) so the
+# container user matches whoever is running it.
+ARG USER_NAME=deploy
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG USER_HOME=/srv/app
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \

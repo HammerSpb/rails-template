@@ -36,7 +36,7 @@ env:
     RAILS_LOG_TO_STDOUT: "1"
 
 ssh:
-  user: roman
+  user: <%= ENV["USER"] %>
   port: 2222
 
 aliases:

@@ -9,7 +9,16 @@ name: rails-template-kamal-host
 
 services:
   kamal-host:
-    build: ./kamal-host
+    build:
+      context: ./kamal-host
+      # The container user mirrors the host user so bind-mounted files keep
+      # correct ownership. `make kamal-host-up` exports HOST_UID/HOST_GID
+      # from `id -u`/`id -g`; USER and PWD come from the shell.
+      args:
+        USER_NAME: ${USER}
+        USER_UID: ${HOST_UID:-1000}
+        USER_GID: ${HOST_GID:-1000}
+        USER_HOME: ${PWD}
     container_name: rails-template-kamal-host
     restart: unless-stopped
     hostname: kamal-host
@@ -18,4 +27,4 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PWD}:${PWD}
-      - ${HOME}/.ssh/id_ed25519.pub:/etc/ssh/authorized_keys.d/roman:ro
+      - ${HOME}/.ssh/id_ed25519.pub:/etc/ssh/authorized_keys.d/${USER}:ro

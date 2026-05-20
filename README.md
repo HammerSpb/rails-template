@@ -60,9 +60,10 @@ These changes are outside the project but required for the local Kamal flow:
 
 4. **SSH key auth to the kamal-host container** — `docker-compose.kamal-host.yml`
    bind-mounts your `~/.ssh/id_ed25519.pub` into the container at
-   `/etc/ssh/authorized_keys.d/roman`. If you only have `id_rsa`, edit
-   the compose file to point at the right pub key. (Nothing needs to be
-   added to your local `~/.ssh/authorized_keys`.)
+   `/etc/ssh/authorized_keys.d/$USER` (the container user matches your
+   host username). If you only have `id_rsa`, edit the compose file to
+   point at the right pub key. (Nothing needs to be added to your local
+   `~/.ssh/authorized_keys`.)
 
 ## Quickstart
 
@@ -120,11 +121,11 @@ a small Ubuntu container with sshd + docker CLI and pointing Kamal at it
 sidesteps all of that, and behaves identically to a real remote VPS.
 
 The container has the project directory bind-mounted at the **same path**
-inside the container as on the host (`/Users/roman/work/rails-template`),
-because Kamal builds `docker run -v $PWD/...` commands and the host
-daemon (shared via socket) needs the path to resolve. The container's
-`roman` user matches macOS uid 502 / gid 20 so created files keep proper
-ownership.
+inside the container as on the host (`$PWD`), because Kamal builds
+`docker run -v $PWD/...` commands and the host daemon (shared via socket)
+needs the path to resolve. The container user is created to match your
+host `$USER` and uid/gid (`make kamal-host-up` passes `id -u` / `id -g`)
+so created files keep proper ownership.
 
 ## Daily workflow
 
@@ -187,7 +188,7 @@ Visit: **http://myapp.local**
 ```bash
 make registry-up / registry-down          # local image registry
 make kamal-host-up / kamal-host-down      # the Linux SSH target
-make kamal-host-shell                     # shell into kamal-host as roman
+make kamal-host-shell                     # shell into kamal-host as your user
 make local-certs                          # mkcert HTTPS certs
 make help                                 # list everything
 ```
@@ -403,7 +404,7 @@ Now you can also remove `bin/generate-local-certs` and the
 |---|---|---|
 | `servers.web` | `127.0.0.1` | server's public IP / hostname |
 | `ssh.port` | `2222` | `22` |
-| `ssh.user` | `roman` | the remote user (often `root` or `deploy`) |
+| `ssh.user` | `$USER` (via ERB) | the remote user (often `root` or `deploy`) |
 | `registry.server` | `127.0.0.1:5555` | `ghcr.io` (or another remote registry) |
 | `registry.username` | `kamal` (stub) | your GitHub username |
 | `builder.driver` | `docker` | omit (use Kamal's default) |
