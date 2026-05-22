@@ -15,7 +15,7 @@ moves untouched to a remote VPS later.
   Kamal's Linux deploy target so Kamal's GNU-userland assumptions hold
 - **Two Kamal configs**: `config/deploy.yml` (prod) and `config/deploy.staging.yml`
 - **JSON structured logging** in production and staging
-- **`/up` health dashboard** — JSON status with version, git SHA, DB + Solid Queue checks
+- **Split health checks** — shallow `/up` liveness (stock Rails, polled by Kamal's proxy) plus a token-gated `/readyz` readiness endpoint with version, git SHA, DB + Solid Queue checks
 - **mkcert TLS helper** for local HTTPS
 - **`bin/db-backup`** for one-command Postgres dumps
 - **`Makefile`** with deploy/log/backup aliases
@@ -77,8 +77,12 @@ bin/kamal accessory boot db -d staging     # first-time only: bring up staging D
 make deploy-production
 make deploy-staging
 
-curl -H 'Host: myapp.local'         http://127.0.0.1/up
+curl -H 'Host: myapp.local'         http://127.0.0.1/up      # liveness (always 200 if booted)
 curl -H 'Host: myapp-staging.local' http://127.0.0.1/up
+
+# Readiness — deep dependency check. Token-gated for non-local clients:
+curl -H 'Host: myapp.local' -H "health-check-token: $HEALTH_CHECK_TOKEN" \
+     http://127.0.0.1/readyz
 ```
 
 `make help` lists every target.
@@ -448,7 +452,7 @@ bin/setup                          — bootstrap script
 bin/db-backup                      — pg_dump from a running Kamal accessory
 bin/generate-local-certs           — mkcert helper for *.local TLS
 lib/json_log_formatter.rb          — JSON log formatter (prod + staging)
-app/controllers/health_controller.rb — /up dashboard
+app/controllers/health_controller.rb — /readyz readiness check
 Makefile                           — deploy/logs/backup aliases
 ```
 
