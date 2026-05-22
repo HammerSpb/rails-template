@@ -8,7 +8,7 @@ moves untouched to a remote VPS later.
 ## What's in the box
 
 - **Rails 8** with **Solid Queue / Solid Cache / Solid Cable** (Postgres-backed; no Redis)
-- **PostgreSQL 16** as a Kamal accessory — one container per environment
+- **PostgreSQL 18** as a Kamal accessory — one container per environment
 - **Dockerized dev DB** at `localhost:5434` (no local Postgres install needed)
 - **Local Docker registry** at `127.0.0.1:5555`
 - **`kamal-host` container** — Ubuntu 24.04 with sshd + docker CLI; acts as
@@ -88,7 +88,7 @@ curl -H 'Host: myapp-staging.local' http://127.0.0.1/up
 ```
 ┌────────────────────────────────────── your laptop ──────────────────────────────────────┐
 │                                                                                         │
-│   localhost:5434 ─►  postgres:16  (dev + test DB)                                       │
+│   localhost:5434 ─►  postgres:18  (dev + test DB)                                       │
 │   127.0.0.1:5555 ─►  registry:2   (image registry)                                      │
 │                                                                                         │
 │   127.0.0.1:2222 ─►  kamal-host   (Ubuntu 24.04 + sshd + docker CLI                    │
@@ -104,10 +104,10 @@ curl -H 'Host: myapp-staging.local' http://127.0.0.1/up
 │   myapp-staging.local ─┴─►  kamal-proxy (host :80 / :443, hostname routing)             │
 │                              │                                                          │
 │                              ├─► myapp-web         (Rails 8 / prod)                     │
-│                              │     └─► myapp-db    (postgres:16, host :5432)            │
+│                              │     └─► myapp-db    (postgres:18, host :5432)            │
 │                              │                                                          │
 │                              └─► myapp-staging-web (Rails 8 / staging)                  │
-│                                    └─► myapp-staging-db (postgres:16, host :5433)       │
+│                                    └─► myapp-staging-db (postgres:18, host :5433)       │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -321,7 +321,7 @@ container next to your app container on the remote server.
 ```yaml
 accessories:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     host: 203.0.113.10        # <-- same server IP as servers.web
     port: "127.0.0.1:5432:5432"   # bind to loopback only; not exposed publicly
     env:
